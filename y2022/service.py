@@ -88,6 +88,17 @@ class Day2Resolver(Resolver):
             opponent_move, _, player_move = list(decoded_line)
             return Day2OpponentMove(opponent_move), Day2PlayerMove(player_move)
         else:
+            """
+            This probably can be solved more easily since you already have data to calculate round score.
+            Outcome tells the weight for round outcome -> __get_round_outcome_score.
+            Opponent move in case of draw, tells the weight of your shape -> ROCK == ROCK -> 1.
+            So basically if we assume:
+              ROCK = 1
+              PAPER = 2
+              SCISSORS = 3
+            Then win for us will be opponent_move == SCISSORS ? 1 : opponent_move.weight + 1
+            And loss would be opponent_move == ROCK ? 3 : opponent_move.weight - 1
+            """
             opponent_move, _, player_round_outcome = list(decoded_line)
             opponent_move = Day2OpponentMove(opponent_move)
             player_move = self.__get_player_move(opponent_move, Day2RoundOutcome(player_round_outcome))
