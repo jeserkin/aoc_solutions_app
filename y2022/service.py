@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from enum import Enum
-from typing import List
+from typing import List, Union
 
 from ninja import UploadedFile
 
@@ -71,72 +71,43 @@ class Day2Resolver(Resolver):
     def __solve_part_one(self, problem_input: UploadedFile):
         total_score = 0
         for line in problem_input:
-            opponent_move, player_move = self.__get_round_moves(line, Part.ONE)
-            total_score += self.__get_round_score(opponent_move, player_move)
+            opponent_move, player_move = self.__get_round_operands(line, Part.ONE)
+            round_outcome = self.__get_round_outcome(opponent_move, player_move)
+            total_score += self.__get_round_outcome_score(round_outcome) + self.__get_round_shape_score(player_move)
         return total_score
 
     def __solve_part_two(self, problem_input: UploadedFile):
         total_score = 0
         for line in problem_input:
-            opponent_move, player_move = self.__get_round_moves(line, Part.TWO)
-            total_score += self.__get_round_score(opponent_move, player_move)
+            opponent_move, round_outcome = self.__get_round_operands(line, Part.TWO)
+            shape_outcome_score = self.__get_player_shape_outcome_score(opponent_move, round_outcome)
+            total_score += self.__get_round_outcome_score(round_outcome) + shape_outcome_score
         return total_score
 
-    def __get_round_moves(self, input_line: bytes, part: Part) -> ():
+    def __get_round_operands(self, input_line: bytes, part: Part) -> ():
         decoded_line = input_line.decode().strip()
         if part == part.ONE:
             opponent_move, _, player_move = list(decoded_line)
             return Day2OpponentMove(opponent_move), Day2PlayerMove(player_move)
         else:
-            """
-            This probably can be solved more easily since you already have data to calculate round score.
-            Outcome tells the weight for round outcome -> __get_round_outcome_score.
-            Opponent move in case of draw, tells the weight of your shape -> ROCK == ROCK -> 1.
-            So basically if we assume:
-              ROCK = 1
-              PAPER = 2
-              SCISSORS = 3
-            Then win for us will be opponent_move == SCISSORS ? 1 : opponent_move.weight + 1
-            And loss would be opponent_move == ROCK ? 3 : opponent_move.weight - 1
-            """
             opponent_move, _, player_round_outcome = list(decoded_line)
-            opponent_move = Day2OpponentMove(opponent_move)
-            player_move = self.__get_player_move(opponent_move, Day2RoundOutcome(player_round_outcome))
-            return opponent_move, player_move
+            return Day2OpponentMove(opponent_move), Day2RoundOutcome(player_round_outcome)
 
-    def __get_player_move(self, opponent_move: Day2OpponentMove, round_outcome: Day2RoundOutcome) -> Day2PlayerMove:
-        if round_outcome == Day2RoundOutcome.WIN:
-            if self.__is_win(opponent_move, Day2PlayerMove.ROCK):
-                return Day2PlayerMove.ROCK
-            elif self.__is_win(opponent_move, Day2PlayerMove.PAPER):
-                return Day2PlayerMove.PAPER
-            else:
-                return Day2PlayerMove.SCISSORS
-        elif round_outcome == Day2RoundOutcome.DRAW:
-            if self.__is_draw(opponent_move, Day2PlayerMove.ROCK):
-                return Day2PlayerMove.ROCK
-            elif self.__is_draw(opponent_move, Day2PlayerMove.PAPER):
-                return Day2PlayerMove.PAPER
-            else:
-                return Day2PlayerMove.SCISSORS
-        else:
-            if self.__is_loss(opponent_move, Day2PlayerMove.ROCK):
-                return Day2PlayerMove.ROCK
-            elif self.__is_loss(opponent_move, Day2PlayerMove.PAPER):
-                return Day2PlayerMove.PAPER
-            else:
-                return Day2PlayerMove.SCISSORS
-
-    def __get_round_score(self, opponent_move: Day2OpponentMove, player_move: Day2PlayerMove) -> int:
-        return self.__get_round_outcome_score(opponent_move, player_move) + self.__get_round_shape_score(player_move)
-
-    def __get_round_outcome_score(self, opponent_move: Day2OpponentMove, player_move: Day2PlayerMove) -> int:
-        if self.__is_draw(opponent_move, player_move):
+    def __get_round_outcome_score(self, round_outcome: Day2RoundOutcome) -> int:
+        if round_outcome == Day2RoundOutcome.DRAW:
             return 3
-        elif self.__is_win(opponent_move, player_move):
+        elif round_outcome == Day2RoundOutcome.WIN:
             return 6
         else:
             return 0
+
+    def __get_round_outcome(self, opponent_move: Day2OpponentMove, player_move: Day2PlayerMove) -> Day2RoundOutcome:
+        if self.__is_draw(opponent_move, player_move):
+            return Day2RoundOutcome.DRAW
+        elif self.__is_win(opponent_move, player_move):
+            return Day2RoundOutcome.WIN
+        else:
+            return Day2RoundOutcome.LOSS
 
     def __is_draw(self, opponent_move: Day2OpponentMove, player_move: Day2PlayerMove) -> bool:
         if opponent_move == Day2OpponentMove.ROCK and player_move == Day2PlayerMove.ROCK:
@@ -156,19 +127,34 @@ class Day2Resolver(Resolver):
             return True
         return False
 
-    def __is_loss(self, opponent_move: Day2OpponentMove, player_move: Day2PlayerMove) -> bool:
-        if opponent_move == Day2OpponentMove.ROCK and player_move == Day2PlayerMove.SCISSORS:
-            return True
-        elif opponent_move == Day2OpponentMove.PAPER and player_move == Day2PlayerMove.ROCK:
-            return True
-        elif opponent_move == Day2OpponentMove.SCISSORS and player_move == Day2PlayerMove.PAPER:
-            return True
-        return False
-
-    def __get_round_shape_score(self, player_move: Day2PlayerMove) -> int:
-        if player_move == Day2PlayerMove.ROCK:
+    def __get_round_shape_score(self, move: Union[Day2PlayerMove, Day2OpponentMove]) -> int:
+        if move in [Day2PlayerMove.ROCK, Day2OpponentMove.ROCK]:
             return 1
-        elif player_move == Day2PlayerMove.PAPER:
+        elif move in [Day2PlayerMove.PAPER, Day2OpponentMove.PAPER]:
             return 2
         else:
             return 3
+
+    def __get_player_shape_outcome_score(self, opponent_move: Day2OpponentMove, round_outcome: Day2RoundOutcome) -> int:
+        draw_encounters = [
+            (Day2OpponentMove.ROCK, Day2PlayerMove.ROCK),
+            (Day2OpponentMove.PAPER, Day2PlayerMove.PAPER),
+            (Day2OpponentMove.SCISSORS, Day2PlayerMove.SCISSORS),
+        ]
+
+        if round_outcome == Day2RoundOutcome.DRAW:
+            encounter = [encounter for encounter in draw_encounters if encounter[0] == opponent_move][0]
+            player_move = encounter[1]
+            shape_score = self.__get_round_shape_score(player_move)
+        elif round_outcome == Day2RoundOutcome.WIN:
+            if opponent_move == Day2OpponentMove.SCISSORS:
+                shape_score = 1
+            else:
+                shape_score = self.__get_round_shape_score(opponent_move) + 1
+        else:
+            if opponent_move == Day2OpponentMove.ROCK:
+                shape_score = 3
+            else:
+                shape_score = self.__get_round_shape_score(opponent_move) - 1
+
+        return shape_score
