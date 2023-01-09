@@ -215,3 +215,65 @@ class Day3Resolver(Resolver):
     def __get_item_type_priority(self, item: str) -> int:
         item_types = list(string.ascii_lowercase) + list(string.ascii_uppercase)
         return item_types.index(item) + 1
+
+
+class Day4Resolver(Resolver):
+    def resolve(self, problem_input: UploadedFile) -> List[Solution]:
+        return [
+            Solution(part=Part.ONE.value, result=self.__solve_part_one(problem_input)),
+            Solution(part=Part.TWO.value, result=self.__solve_part_two(problem_input)),
+        ]
+
+    def __solve_part_one(self, problem_input: UploadedFile) -> int:
+        fully_contained_sections = 0
+        for line in problem_input:
+            assignment_pairs = self.__get_section_assignment_pairs(line)
+            fully_contained_sections += int(self.__is_any_section_fully_contained(assignment_pairs))
+        return fully_contained_sections
+
+    def __solve_part_two(self, problem_input: UploadedFile) -> int:
+        overlapping_sections = 0
+        for line in problem_input:
+            assignment_pairs = self.__get_section_assignment_pairs(line)
+            overlapping_sections += int(self.__is_any_section_overlapping(assignment_pairs))
+        return overlapping_sections
+
+    def __get_section_assignment_pairs(self, raw_input: bytes) -> []:
+        decoded_line = raw_input.decode().strip()
+        pairs = decoded_line.split(',')
+        sections = []
+        for pair in pairs:
+            sections.append(tuple(int(x) for x in pair.split('-')))
+        return sections
+
+    def __is_any_section_fully_contained(self, assignment_pairs: []) -> bool:
+        pair_one, pair_two = assignment_pairs
+
+        if pair_one[0] >= pair_two[0] and pair_one[1] <= pair_two[1]:
+            return True
+        elif pair_two[0] >= pair_one[0] and pair_two[1] <= pair_one[1]:
+            return True
+
+        return False
+
+    def __is_any_section_overlapping(self, assignment_pairs: []) -> bool:
+        pair_one, pair_two = assignment_pairs
+
+        if self.__in_range(pair_two, pair_one[0]):
+            return True
+        elif self.__in_range(pair_two, pair_one[1]):
+            return True
+        elif self.__in_range(pair_one, pair_two[0]):
+            return True
+        elif self.__in_range(pair_one, pair_two[1]):
+            return True
+
+        return False
+
+    def __in_range(self, limits: (), value_to_check: int) -> bool:
+        a, b = limits
+
+        if a <= value_to_check <= b:
+            return True
+
+        return False
