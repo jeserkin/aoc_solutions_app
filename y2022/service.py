@@ -1,7 +1,7 @@
 import string
 from abc import abstractmethod
 from enum import Enum
-from typing import List, Union
+from typing import List, Union, Generator
 
 from ninja import UploadedFile
 
@@ -165,6 +165,7 @@ class Day3Resolver(Resolver):
     def resolve(self, problem_input: UploadedFile) -> List[Solution]:
         return [
             Solution(part=Part.ONE.value, result=self.__solve_part_one(problem_input)),
+            Solution(part=Part.TWO.value, result=self.__solve_part_two(problem_input)),
         ]
 
     def __solve_part_one(self, problem_input: UploadedFile) -> int:
@@ -175,6 +176,12 @@ class Day3Resolver(Resolver):
             priorities_sum += self.__get_misplaced_item_type_priority(*rucksack_compartment_items)
         return priorities_sum
 
+    def __solve_part_two(self, problem_input: UploadedFile) -> int:
+        priorities_sum = 0
+        for elf_group in self.__get_elf_group(problem_input, 3):
+            priorities_sum += self.__find_elf_group_badge_priority(elf_group)
+        return priorities_sum
+
     def __get_rucksack_compartment_items(self, raw_input: bytes) -> ():
         decoded_line = raw_input.decode().strip()
         decoded_line_length = len(decoded_line)
@@ -182,9 +189,29 @@ class Day3Resolver(Resolver):
         return decoded_line[0:split], decoded_line[split:]
 
     def __get_misplaced_item_type_priority(self, compartment_one: str, compartment_two: str) -> int:
-        item_types = list(string.ascii_lowercase) + list(string.ascii_uppercase)
-
         for item in compartment_one:
             if compartment_two.count(item) > 0:
-                return item_types.index(item) + 1
+                return self.__get_item_type_priority(item)
         return 0
+
+    def __get_elf_group(self, problem_input: UploadedFile, size: int) -> Generator:
+        group = []
+        for raw_input in problem_input:
+            decoded_line = raw_input.decode().strip()
+            group.append(decoded_line)
+
+            if len(group) == size:
+                yield tuple(group)
+                group = []
+
+    def __find_elf_group_badge_priority(self, elf_group: ()) -> int:
+        elf_group_unique_items = set(''.join(elf_group))
+        for item in elf_group_unique_items:
+            group_check = [elf_group_items for elf_group_items in elf_group if item in elf_group_items]
+            if len(group_check) == len(elf_group):
+                return self.__get_item_type_priority(item)
+        return 0
+
+    def __get_item_type_priority(self, item: str) -> int:
+        item_types = list(string.ascii_lowercase) + list(string.ascii_uppercase)
+        return item_types.index(item) + 1
