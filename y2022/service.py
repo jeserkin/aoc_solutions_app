@@ -360,3 +360,26 @@ class Day5Resolver(Resolver):
         for crate_stack in crates_map:
             top_crates += re.match(r'\[(\w+)', crate_stack[0]).group(1)
         return top_crates
+
+
+class Day6Resolver(Resolver):
+    def resolve(self, problem_input: UploadedFile) -> List[Solution]:
+        return [
+            Solution(part=Part.ONE.value, result=self.__solve_part_one(problem_input)),
+            Solution(part=Part.TWO.value, result=self.__solve_part_two(problem_input)),
+        ]
+
+    def __solve_part_one(self, problem_input: UploadedFile) -> int:
+        return self.__find_marker(problem_input, 4)
+
+    def __solve_part_two(self, problem_input: UploadedFile) -> int:
+        return self.__find_marker(problem_input, 14)
+
+    def __find_marker(self, problem_input: UploadedFile, marker_chunk_size: int) -> int:
+        for line in problem_input:
+            decoded_line = line.decode().strip()
+            for i in range(0, len(decoded_line)):
+                chunk = decoded_line[i: i + marker_chunk_size]
+                if len(chunk) == len(set(chunk)):
+                    return i + marker_chunk_size
+        return 0
