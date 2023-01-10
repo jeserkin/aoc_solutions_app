@@ -4,7 +4,7 @@ from ninja import Router, File
 from ninja.files import UploadedFile
 
 from y2022.models import Solution
-from y2022.service import Day1Resolver, Day2Resolver, Day3Resolver, Day4Resolver, Day5Resolver
+from y2022.service import Day1Resolver, Day2Resolver, Day3Resolver, Day4Resolver, Day5Resolver, Day6Resolver
 
 router = Router(tags=["2022"])
 
@@ -51,4 +51,13 @@ def day5_solution(request, problem_input: UploadedFile = File(...)):
     Solves Day 5 problem and provides solution for both parts
     """
     resolver = Day5Resolver()
+    return list(resolver.resolve(problem_input))
+
+
+@router.post('/day/6', response=List[Solution], summary='Day 6 solutions')
+def day6_solution(request, problem_input: UploadedFile = File(...)):
+    """
+    Solves Day 6 problem and provides solution for both parts
+    """
+    resolver = Day6Resolver()
     return list(resolver.resolve(problem_input))
