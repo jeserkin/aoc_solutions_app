@@ -284,13 +284,21 @@ class Day5Resolver(Resolver):
     def resolve(self, problem_input: UploadedFile) -> List[Solution]:
         return [
             Solution(part=Part.ONE.value, result=self.__solve_part_one(problem_input)),
+            Solution(part=Part.TWO.value, result=self.__solve_part_two(problem_input)),
         ]
 
     def __solve_part_one(self, problem_input: UploadedFile) -> str:
         input_as_list = self.__convert_to_list(problem_input)
         stacks_of_crates, procedure = self.__get_main_peaces(input_as_list)
         crates_map = self.__create_crates_map(stacks_of_crates)
-        self.__operate_crane(crates_map, procedure)
+        self.__operate_crane(crates_map, procedure, Part.ONE)
+        return self.__find_top_crates(crates_map)
+
+    def __solve_part_two(self, problem_input: UploadedFile) -> str:
+        input_as_list = self.__convert_to_list(problem_input)
+        stacks_of_crates, procedure = self.__get_main_peaces(input_as_list)
+        crates_map = self.__create_crates_map(stacks_of_crates)
+        self.__operate_crane(crates_map, procedure, Part.TWO)
         return self.__find_top_crates(crates_map)
 
     def __convert_to_list(self, problem_input: UploadedFile) -> []:
@@ -319,21 +327,33 @@ class Day5Resolver(Resolver):
             chunk = stacks_row[i:i + chunk_size]
             yield chunk
 
-    def __operate_crane(self, crates_map: [], procedure: []) -> None:
+    def __operate_crane(self, crates_map: [], procedure: [], part: Part) -> None:
         for operation in procedure:
             crates_to_move, from_stack, to_stack = self.__parse_operation(operation)
-            self.__execute_crane_operation(crates_map, crates_to_move, from_stack, to_stack)
+            if part == Part.ONE:
+                self.__execute_crate_mover_9000_operation(crates_map, crates_to_move, from_stack, to_stack)
+            else:
+                self.__execute_crate_mover_9001_operation(crates_map, crates_to_move, from_stack, to_stack)
 
     def __parse_operation(self, operation: str) -> ():
         result = re.match(r'move (\d+) from (\d+) to (\d+)', operation)
         return tuple([int(group) for group in list(result.groups())])
 
-    def __execute_crane_operation(self, crates_map: [], crates_to_move: int, from_stack: int, to_stack: int) -> []:
+    def __execute_crate_mover_9000_operation(self, crates_map: [], crates_to_move: int, from_stack: int,
+                                             to_stack: int) -> None:
         for _ in range(crates_to_move):
             source_stack = crates_map[from_stack - 1]
             destination_stack = crates_map[to_stack - 1]
             crate_to_move = source_stack.pop(0)
             destination_stack.insert(0, crate_to_move)
+
+    def __execute_crate_mover_9001_operation(self, crates_map: [], crates_to_move: int, from_stack: int,
+                                             to_stack: int) -> None:
+        source_stack = crates_map[from_stack - 1]
+        destination_stack = crates_map[to_stack - 1]
+        transferable_crates = source_stack[0:crates_to_move]
+        crates_map[to_stack - 1] = transferable_crates + destination_stack
+        crates_map[from_stack - 1] = source_stack[crates_to_move:]
 
     def __find_top_crates(self, crates_map: []) -> str:
         top_crates = ''
