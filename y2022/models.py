@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Union
 
 from ninja import Schema
 
@@ -11,4 +12,4 @@ class Part(Enum):
 
 class Solution(Schema):
     part: int
-    result: int
+    result: Union[int, str]

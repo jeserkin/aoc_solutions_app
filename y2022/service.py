@@ -1,3 +1,4 @@
+import re
 import string
 from abc import abstractmethod
 from enum import Enum
@@ -277,3 +278,85 @@ class Day4Resolver(Resolver):
             return True
 
         return False
+
+
+class Day5Resolver(Resolver):
+    def resolve(self, problem_input: UploadedFile) -> List[Solution]:
+        return [
+            Solution(part=Part.ONE.value, result=self.__solve_part_one(problem_input)),
+            Solution(part=Part.TWO.value, result=self.__solve_part_two(problem_input)),
+        ]
+
+    def __solve_part_one(self, problem_input: UploadedFile) -> str:
+        input_as_list = self.__convert_to_list(problem_input)
+        stacks_of_crates, procedure = self.__get_main_peaces(input_as_list)
+        crates_map = self.__create_crates_map(stacks_of_crates)
+        self.__operate_crane(crates_map, procedure, Part.ONE)
+        return self.__find_top_crates(crates_map)
+
+    def __solve_part_two(self, problem_input: UploadedFile) -> str:
+        input_as_list = self.__convert_to_list(problem_input)
+        stacks_of_crates, procedure = self.__get_main_peaces(input_as_list)
+        crates_map = self.__create_crates_map(stacks_of_crates)
+        self.__operate_crane(crates_map, procedure, Part.TWO)
+        return self.__find_top_crates(crates_map)
+
+    def __convert_to_list(self, problem_input: UploadedFile) -> []:
+        result = []
+        for line in problem_input:
+            result.append(line.decode().rstrip())
+        return result
+
+    def __get_main_peaces(self, input_as_list: []) -> ():
+        split = input_as_list.index('')
+        return input_as_list[0:split], input_as_list[split + 1:]
+
+    def __create_crates_map(self, stacks_of_crates: []) -> []:
+        map_size = stacks_of_crates.pop().strip()
+        map_size = int(map_size[len(map_size) - 1])
+        crates_map = [[] for _ in range(map_size)]
+        for stack_row in stacks_of_crates:
+            for idx, crate in enumerate(self.__read_map_row(stack_row)):
+                if crate.strip() != '':
+                    crates_map[idx].append(crate)
+        return crates_map
+
+    def __read_map_row(self, stacks_row: str) -> Generator:
+        chunk_size = 3
+        for i in range(0, len(stacks_row), chunk_size + 1):
+            chunk = stacks_row[i:i + chunk_size]
+            yield chunk
+
+    def __operate_crane(self, crates_map: [], procedure: [], part: Part) -> None:
+        for operation in procedure:
+            crates_to_move, from_stack, to_stack = self.__parse_operation(operation)
+            if part == Part.ONE:
+                self.__execute_crate_mover_9000_operation(crates_map, crates_to_move, from_stack, to_stack)
+            else:
+                self.__execute_crate_mover_9001_operation(crates_map, crates_to_move, from_stack, to_stack)
+
+    def __parse_operation(self, operation: str) -> ():
+        result = re.match(r'move (\d+) from (\d+) to (\d+)', operation)
+        return tuple([int(group) for group in list(result.groups())])
+
+    def __execute_crate_mover_9000_operation(self, crates_map: [], crates_to_move: int, from_stack: int,
+                                             to_stack: int) -> None:
+        for _ in range(crates_to_move):
+            source_stack = crates_map[from_stack - 1]
+            destination_stack = crates_map[to_stack - 1]
+            crate_to_move = source_stack.pop(0)
+            destination_stack.insert(0, crate_to_move)
+
+    def __execute_crate_mover_9001_operation(self, crates_map: [], crates_to_move: int, from_stack: int,
+                                             to_stack: int) -> None:
+        source_stack = crates_map[from_stack - 1]
+        destination_stack = crates_map[to_stack - 1]
+        transferable_crates = source_stack[0:crates_to_move]
+        crates_map[to_stack - 1] = transferable_crates + destination_stack
+        crates_map[from_stack - 1] = source_stack[crates_to_move:]
+
+    def __find_top_crates(self, crates_map: []) -> str:
+        top_crates = ''
+        for crate_stack in crates_map:
+            top_crates += re.match(r'\[(\w+)', crate_stack[0]).group(1)
+        return top_crates
