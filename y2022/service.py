@@ -444,6 +444,7 @@ class Day7Resolver(Resolver):
     def resolve(self, problem_input: UploadedFile) -> List[Solution]:
         return [
             Solution(part=Part.ONE.value, result=self.__solve_part_one(problem_input)),
+            Solution(part=Part.TWO.value, result=self.__solve_part_two(problem_input)),
         ]
 
     def __solve_part_one(self, problem_input: UploadedFile) -> int:
@@ -453,6 +454,24 @@ class Day7Resolver(Resolver):
         for directory in self.__find_directories(file_tree, 100000):
             total += directory.get_size()
         return total
+
+    def __solve_part_two(self, problem_input: UploadedFile) -> int:
+        file_tree = self.__create_file_tree(problem_input)
+        file_tree = self.__change_directory('/', file_tree)
+        filesystem_space = 70000000
+        update_required_space = 30000000
+        used_space = file_tree.get_size()
+        free_space = filesystem_space - used_space
+
+        best_deletion_candidate = None
+        found_directories = self.__find_directories(file_tree, update_required_space)
+        found_directories.sort(key=lambda x: x.get_size(), reverse=True)
+
+        for directory in found_directories:
+            if update_required_space <= (directory.get_size() + free_space):
+                best_deletion_candidate = directory
+
+        return best_deletion_candidate.get_size()
 
     def __create_file_tree(self, problem_input: UploadedFile) -> Day7File:
         current_directory = Day7File()
