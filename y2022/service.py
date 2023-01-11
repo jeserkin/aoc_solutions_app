@@ -383,3 +383,165 @@ class Day6Resolver(Resolver):
                 if len(chunk) == len(set(chunk)):
                     return i + marker_chunk_size
         return 0
+
+
+class Day7FileType(Enum):
+    DIR = 1,
+    FILE = 2
+
+
+class Day7File:
+
+    def __init__(self) -> None:
+        self.__type = Day7FileType.DIR
+        self.__size = 0
+        self.__name = '/'
+        self.__parent = None
+        self.__children = []
+
+    def set_type(self, file_type: Day7FileType) -> None:
+        self.__type = file_type
+
+    def is_dir(self) -> bool:
+        return self.__type == Day7FileType.DIR
+
+    def is_file(self) -> bool:
+        return self.__type == Day7FileType.FILE
+
+    def set_size(self, size: int) -> None:
+        self.__size = size
+
+    def get_size(self) -> int:
+        if self.__type == Day7FileType.DIR:
+            total = 0
+            for child in self.__children:
+                total += child.get_size()
+            return total
+        else:
+            return self.__size
+
+    def set_name(self, name: str) -> None:
+        self.__name = name
+
+    def get_name(self) -> str:
+        return self.__name
+
+    def set_parent(self, parent: 'Day7File') -> None:
+        self.__parent = parent
+
+    def get_parent(self) -> 'Day7File':
+        return self.__parent
+
+    def add_child(self, child: 'Day7File') -> None:
+        if not any(child_item.get_name() == child.get_name() for child_item in self.__children):
+            self.__children.append(child)
+
+    def get_children(self) -> []:
+        return self.__children
+
+
+class Day7Resolver(Resolver):
+    def resolve(self, problem_input: UploadedFile) -> List[Solution]:
+        return [
+            Solution(part=Part.ONE.value, result=self.__solve_part_one(problem_input)),
+            Solution(part=Part.TWO.value, result=self.__solve_part_two(problem_input)),
+        ]
+
+    def __solve_part_one(self, problem_input: UploadedFile) -> int:
+        file_tree = self.__create_file_tree(problem_input)
+        file_tree = self.__change_directory('/', file_tree)
+        total = 0
+        for directory in self.__find_directories(file_tree, 100000):
+            total += directory.get_size()
+        return total
+
+    def __solve_part_two(self, problem_input: UploadedFile) -> int:
+        file_tree = self.__create_file_tree(problem_input)
+        file_tree = self.__change_directory('/', file_tree)
+        filesystem_space = 70000000
+        update_required_space = 30000000
+        used_space = file_tree.get_size()
+        free_space = filesystem_space - used_space
+
+        best_deletion_candidate = None
+        found_directories = self.__find_directories(file_tree, update_required_space)
+        found_directories.sort(key=lambda x: x.get_size(), reverse=True)
+
+        for directory in found_directories:
+            if update_required_space <= (directory.get_size() + free_space):
+                best_deletion_candidate = directory
+
+        return best_deletion_candidate.get_size()
+
+    def __create_file_tree(self, problem_input: UploadedFile) -> Day7File:
+        current_directory = Day7File()
+
+        for raw_input in problem_input:
+            decoded_line = raw_input.decode().strip()
+            if decoded_line[0] == '$':
+                current_directory = self.__perform_command(decoded_line, current_directory)
+            else:
+                self.__read_file_listing(decoded_line, current_directory)
+
+        return current_directory
+
+    def __perform_command(self, decoded_line: str, current_directory: Day7File) -> Day7File:
+        matcher = re.match(r'\$ cd (\w+|/|\.{2})', decoded_line)
+        if matcher:
+            return self.__change_directory(matcher.group(1), current_directory)
+        else:
+            return current_directory
+
+    def __read_file_listing(self, decoded_line: str, current_directory: Day7File) -> None:
+        matcher = re.match(r'(\d+)\s+([\w.]+)', decoded_line)
+        if matcher:
+            directory_file = self.__create_directory_file(name=matcher.group(2), size=int(matcher.group(1)))
+            current_directory.add_child(directory_file)
+            directory_file.set_parent(current_directory)
+
+    def __create_directory(self, name: str) -> Day7File:
+        directory = Day7File()
+        directory.set_name(name)
+        return directory
+
+    def __change_directory(self, directory_name: str, current_directory: Day7File) -> Day7File:
+        if directory_name == '/':
+            return self.__navigate_to_root(current_directory)
+        elif directory_name == '..':
+            return self.__navigate_to_parent(current_directory)
+        else:
+            directory = self.__create_directory(directory_name)
+
+            if isinstance(current_directory, Day7File):
+                current_directory.add_child(directory)
+                directory.set_parent(current_directory)
+
+            return directory
+
+    def __navigate_to_root(self, current_directory: Day7File) -> Day7File:
+        if current_directory.get_parent() is not None:
+            return self.__navigate_to_root(current_directory.get_parent())
+        else:
+            return current_directory
+
+    def __navigate_to_parent(self, current_directory: Day7File) -> Day7File:
+        if current_directory.get_parent() is not None:
+            return current_directory.get_parent()
+        else:
+            return current_directory
+
+    def __create_directory_file(self, name: str, size: int) -> Day7File:
+        directory_file = Day7File()
+        directory_file.set_name(name)
+        directory_file.set_size(size)
+        directory_file.set_type(Day7FileType.FILE)
+        return directory_file
+
+    def __find_directories(self, file_tree: Day7File, smaller_than_or_equal: int) -> []:
+        found_directories = []
+        for child in file_tree.get_children():
+            if child.is_dir():
+                found_directories += self.__find_directories(child, smaller_than_or_equal)
+                if child.get_size() <= smaller_than_or_equal:
+                    found_directories.append(child)
+        return found_directories
