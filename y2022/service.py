@@ -545,3 +545,85 @@ class Day7Resolver(Resolver):
                 if child.get_size() <= smaller_than_or_equal:
                     found_directories.append(child)
         return found_directories
+
+
+class Day8Tree:
+    def __init__(self, height: int, position: ()) -> None:
+        self.__height = height
+        self.__position = position  # x,y on grid (might be obsolete)
+
+    def __str__(self) -> str:
+        return f'Tree at [{self.__position[0]}, {self.__position[1]}] is of height: {self.__height}'
+
+    def get_height(self) -> int:
+        return self.__height
+
+    def get_position(self) -> ():
+        return self.__position
+
+
+class Day8Resolver(Resolver):
+    def resolve(self, problem_input: UploadedFile) -> List[Solution]:
+        return [
+            Solution(part=Part.ONE.value, result=self.__solve_part_one(problem_input)),
+        ]
+
+    def __solve_part_one(self, problem_input: UploadedFile) -> int:
+        grid = {}
+        for row_idx, raw_input in enumerate(problem_input):
+            decoded_line = raw_input.decode().strip()
+            self.__read_grid(grid, decoded_line, row_idx)
+
+        # @TODO Very slow, need to improve
+        return self.__find_visible_trees(grid)
+
+    def __read_grid(self, grid: {}, decoded_line: str, row_idx: int) -> None:
+        for col_idx, tree_height in enumerate(decoded_line):
+            tree = Day8Tree(int(tree_height), (col_idx, row_idx))
+            grid[(col_idx, row_idx)] = tree
+
+    def __get_grid_size(self, grid: {}) -> ():
+        width = max(grid.keys(), key=lambda x: x[0])[0]
+        height = max(grid.keys(), key=lambda y: y[1])[1]
+        # because 0 based
+        return width + 1, height + 1
+
+    def __find_visible_trees(self, grid: {}) -> int:
+        grid_width, grid_height = self.__get_grid_size(grid)
+        visible_trees = 0
+
+        for position, tree in grid.items():
+            position_x, position_y = position
+            if position_x == 0 or position_x == (grid_width - 1):
+                visible_trees += 1
+            elif position_y == 0 or position_y == (grid_height - 1):
+                visible_trees += 1
+            else:
+                visible_trees += self.__is_interior_tree_visible(tree, grid) is True
+
+        return visible_trees
+
+    def __is_interior_tree_visible(self, tree: Day8Tree, grid: {}) -> bool:
+        tree_x, tree_y = tree.get_position()
+
+        # visible from top?
+        found = [v for k, v in grid.items() if k[0] == tree_x and k[1] < tree_y and v.get_height() >= tree.get_height()]
+        if len(found) == 0:
+            return True
+
+        # visible from bottom?
+        found = [v for k, v in grid.items() if k[0] == tree_x and k[1] > tree_y and v.get_height() >= tree.get_height()]
+        if len(found) == 0:
+            return True
+
+        # visible from left?
+        found = [v for k, v in grid.items() if k[0] < tree_x and k[1] == tree_y and v.get_height() >= tree.get_height()]
+        if len(found) == 0:
+            return True
+
+        # visible from right?
+        found = [v for k, v in grid.items() if k[0] > tree_x and k[1] == tree_y and v.get_height() >= tree.get_height()]
+        if len(found) == 0:
+            return True
+
+        return False
