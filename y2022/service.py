@@ -2,6 +2,7 @@ import re
 import string
 from abc import abstractmethod
 from enum import Enum
+from functools import reduce
 from typing import List, Union, Generator
 
 from ninja import UploadedFile
@@ -545,3 +546,163 @@ class Day7Resolver(Resolver):
                 if child.get_size() <= smaller_than_or_equal:
                     found_directories.append(child)
         return found_directories
+
+
+class Day8Resolver(Resolver):
+    def resolve(self, problem_input: UploadedFile) -> List[Solution]:
+        return [
+            Solution(part=Part.ONE.value, result=self.__solve_part_one(problem_input)),
+            Solution(part=Part.TWO.value, result=self.__solve_part_two(problem_input)),
+        ]
+
+    def __solve_part_one(self, problem_input: UploadedFile) -> int:
+        grid = {}
+        for row_idx, raw_input in enumerate(problem_input):
+            decoded_line = raw_input.decode().strip()
+            self.__read_grid(grid, decoded_line, row_idx)
+
+        return self.__find_visible_trees(grid)
+
+    def __solve_part_two(self, problem_input: UploadedFile) -> int:
+        grid = {}
+        for row_idx, raw_input in enumerate(problem_input):
+            decoded_line = raw_input.decode().strip()
+            self.__read_grid(grid, decoded_line, row_idx)
+
+        return self.__calculate_trees_scenic_score(grid)
+
+    def __read_grid(self, grid: {}, decoded_line: str, row_idx: int) -> None:
+        for col_idx, tree_height in enumerate(decoded_line):
+            grid[(col_idx, row_idx)] = int(tree_height)
+
+    def __get_grid_size(self, grid: {}) -> ():
+        width = max(grid.keys(), key=lambda x: x[0])[0]
+        height = max(grid.keys(), key=lambda y: y[1])[1]
+        # because 0 based
+        return width + 1, height + 1
+
+    def __find_visible_trees(self, grid: {}) -> int:
+        grid_width, grid_height = self.__get_grid_size(grid)
+        visible_trees = 0
+
+        for position, tree_height in grid.items():
+            position_x, position_y = position
+            if position_x == 0 or position_x == (grid_width - 1):
+                visible_trees += 1
+            elif position_y == 0 or position_y == (grid_height - 1):
+                visible_trees += 1
+            else:
+                visible_trees += self.__is_interior_tree_visible(position, tree_height, grid) is True
+
+        return visible_trees
+
+    def __is_interior_tree_visible(self, position: (), tree_height: int, grid: {}) -> bool:
+        tree_x, tree_y = position
+        hidden = {
+            'N': False,
+            'E': False,
+            'S': False,
+            'W': False
+        }
+
+        # movement from point
+        step = 1
+        while True:
+
+            # not visible from top?
+            if (tree_x, tree_y - step) in grid and hidden['N'] is False and \
+                    grid[(tree_x, tree_y - step)] >= tree_height:
+                hidden['N'] = True
+
+            # not visible from right?
+            if (tree_x + step, tree_y) in grid and hidden['E'] is False and \
+                    grid[(tree_x + step, tree_y)] >= tree_height:
+                hidden['E'] = True
+
+            # not visible from bottom?
+            if (tree_x, tree_y + step) in grid and hidden['S'] is False and \
+                    grid[(tree_x, tree_y + step)] >= tree_height:
+                hidden['S'] = True
+
+            # not visible from left?
+            if (tree_x - step, tree_y) in grid and hidden['W'] is False and \
+                    grid[(tree_x - step, tree_y)] >= tree_height:
+                hidden['W'] = True
+
+            if all(hidden.values()):
+                return False
+
+            # outside grid?
+            if (tree_x, tree_y - step) not in grid and \
+                    (tree_x + step, tree_y) not in grid and \
+                    (tree_x, tree_y + step) not in grid and \
+                    (tree_x - step, tree_y) not in grid:
+                return True
+
+            step += 1
+
+    def __calculate_trees_scenic_score(self, grid: {}) -> int:
+        grid_width, grid_height = self.__get_grid_size(grid)
+        scenic_score = []
+
+        for position, tree_height in grid.items():
+            position_x, position_y = position
+            if position_x == 0 or position_x == (grid_width - 1):
+                continue
+            elif position_y == 0 or position_y == (grid_height - 1):
+                continue
+            else:
+                scenic_score.append(self.__calculate_tree_scenic_score(position, tree_height, grid))
+
+        return max(scenic_score)
+
+    def __calculate_tree_scenic_score(self, position, tree_height, grid) -> int:
+        tree_x, tree_y = position
+        block_reached = {
+            'N': False,
+            'E': False,
+            'S': False,
+            'W': False
+        }
+        tree_scenic_score = {
+            'N': 0,
+            'E': 0,
+            'S': 0,
+            'W': 0
+        }
+
+        # movement from point
+        step = 1
+        while True:
+
+            # not visible from top?
+            if (tree_x, tree_y - step) in grid and block_reached['N'] is False:
+                block_reached['N'] = grid[(tree_x, tree_y - step)] >= tree_height
+                tree_scenic_score['N'] = step
+
+            # not visible from right?
+            if (tree_x + step, tree_y) in grid and block_reached['E'] is False:
+                block_reached['E'] = grid[(tree_x + step, tree_y)] >= tree_height
+                tree_scenic_score['E'] = step
+
+            # not visible from bottom?
+            if (tree_x, tree_y + step) in grid and block_reached['S'] is False:
+                block_reached['S'] = grid[(tree_x, tree_y + step)] >= tree_height
+                tree_scenic_score['S'] = step
+
+            # not visible from left?
+            if (tree_x - step, tree_y) in grid and block_reached['W'] is False:
+                block_reached['W'] = grid[(tree_x - step, tree_y)] >= tree_height
+                tree_scenic_score['W'] = step
+
+            if all(block_reached.values()):
+                return reduce((lambda x, y: x * y), tree_scenic_score.values())
+
+            # outside grid?
+            if (tree_x, tree_y - step) not in grid and \
+                    (tree_x + step, tree_y) not in grid and \
+                    (tree_x, tree_y + step) not in grid and \
+                    (tree_x - step, tree_y) not in grid:
+                return reduce((lambda x, y: x * y), tree_scenic_score.values())
+
+            step += 1
