@@ -1,13 +1,44 @@
+import importlib
+from enum import Enum
 from typing import List
 
 from ninja import Router, File
 from ninja.files import UploadedFile
+from ninja.errors import HttpError
 
 from y2022.models import Solution
 from y2022.service import Day1Resolver, Day2Resolver, Day3Resolver, Day4Resolver, Day5Resolver, Day6Resolver, \
-    Day7Resolver, Day8Resolver
+    Day7Resolver, Day8Resolver, Day9Resolver
 
 router = Router(tags=["2022"])
+
+
+class DaySelection(str, Enum):
+    DAY_1 = '1',
+    DAY_2 = '2',
+    DAY_3 = '3',
+    DAY_4 = '4',
+    DAY_5 = '5',
+    DAY_6 = '6',
+    DAY_7 = '7',
+    DAY_8 = '8',
+    DAY_9 = '9',
+    DAY_10 = '10',
+    DAY_11 = '11',
+    DAY_12 = '12',
+    DAY_13 = '13',
+    DAY_14 = '14',
+    DAY_15 = '15',
+    DAY_16 = '16',
+    DAY_17 = '17',
+    DAY_18 = '18',
+    DAY_19 = '19',
+    DAY_20 = '20',
+    DAY_21 = '21',
+    DAY_22 = '22',
+    DAY_23 = '23',
+    DAY_24 = '24',
+    DAY_25 = '25',
 
 
 @router.post('/day/1', response=List[Solution], summary='Day 1 solutions')
@@ -79,4 +110,13 @@ def day8_solution(request, problem_input: UploadedFile = File(...)):
     Solves Day 8 problem and provides solution for both parts
     """
     resolver = Day8Resolver()
+    return list(resolver.resolve(problem_input))
+
+
+@router.post('/day/9', response=List[Solution], summary='Day 9 solutions')
+def day9_solution(request, problem_input: UploadedFile = File(...)):
+    """
+    Solves Day 9 problem and provides solution for both parts
+    """
+    resolver = Day9Resolver()
     return list(resolver.resolve(problem_input))

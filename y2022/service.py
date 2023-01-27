@@ -706,3 +706,86 @@ class Day8Resolver(Resolver):
                 return reduce((lambda x, y: x * y), tree_scenic_score.values())
 
             step += 1
+
+
+class Day9MoveState:
+
+    def __init__(self):
+        self.head = [0, 0]
+        self.tail = [0, 0]
+
+
+class Day9Resolver(Resolver):
+    def resolve(self, problem_input: UploadedFile) -> List[Solution]:
+        return [
+            Solution(part=Part.ONE.value, result=self.__solve_part_one(problem_input)),
+        ]
+
+    def __solve_part_one(self, problem_input: UploadedFile) -> int:
+        state = Day9MoveState()
+        tail_unique_visits = set()
+        tail_unique_visits.add((state.tail[0], state.tail[1]))
+        for raw_input in problem_input:
+            decoded_line = raw_input.decode().strip()
+            direction, moves = self.__parse_operation(decoded_line)
+            tail_unique_visits.update(self.__perform_moves(direction, int(moves), state))
+        return len(tail_unique_visits)
+
+    def __parse_operation(self, raw_op: str) -> ():
+        matcher = re.match(r'(\w+)\s+(\d+)', raw_op)
+        if matcher:
+            return matcher.groups()
+        else:
+            raise RuntimeError('Invalid operation format!')
+
+    def __perform_moves(self, direction: str, move_count: int, state: Day9MoveState):
+        tail_move_visits = []
+        # TODO: abstract to move (find positive/negative direction)
+        if direction == 'U':
+            self.__move_up(move_count, tail_move_visits, state)
+        elif direction == 'R':
+            self.__move_right(move_count, tail_move_visits, state)
+        elif direction == 'D':
+            self.__move_down(move_count, tail_move_visits, state)
+        else:
+            self.__move_left(move_count, tail_move_visits, state)
+        return tail_move_visits
+
+    def __move_up(self, move_count: int, tail_move_visits: [], state: Day9MoveState) -> None:
+        head = state.head
+        for i in range(0, move_count):
+            previous_head_position = head[:]
+            head[1] = head[1] - 1
+            self.__make_tail_move(state, previous_head_position, tail_move_visits)
+
+    def __move_right(self, move_count: int, tail_move_visits: [], state: Day9MoveState) -> None:
+        head = state.head
+        for i in range(0, move_count):
+            previous_head_position = head[:]
+            head[0] = head[0] + 1
+            self.__make_tail_move(state, previous_head_position, tail_move_visits)
+
+    def __move_down(self, move_count: int, tail_move_visits: [], state: Day9MoveState) -> None:
+        head = state.head
+        for i in range(0, move_count):
+            previous_head_position = head[:]
+            head[1] = head[1] + 1
+            self.__make_tail_move(state, previous_head_position, tail_move_visits)
+
+    def __move_left(self, move_count: int, tail_move_visits: [], state: Day9MoveState) -> None:
+        head = state.head
+        for i in range(0, move_count):
+            previous_head_position = head[:]
+            head[0] = head[0] - 1
+            self.__make_tail_move(state, previous_head_position, tail_move_visits)
+
+    def __is_tail_move_required(self, state: Day9MoveState) -> bool:
+        head = state.head
+        tail = state.tail
+
+        return abs(head[0] - tail[0]) > 1 or abs(head[1] - tail[1]) > 1
+
+    def __make_tail_move(self, state: Day9MoveState, previous_head_position: [], tail_move_visits: []) -> None:
+        if self.__is_tail_move_required(state):
+            state.tail = previous_head_position
+            tail_move_visits.append(tuple(state.tail))
