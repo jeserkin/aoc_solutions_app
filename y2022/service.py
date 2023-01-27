@@ -740,7 +740,7 @@ class Day9Resolver(Resolver):
 
     def __perform_moves(self, direction: str, move_count: int, state: Day9MoveState):
         tail_move_visits = []
-        # TODO: abstract to move (find positive/negative direction)
+        # TODO: abstract to move (find positive/negative direction, assign increment/decrement to x/y)
         if direction == 'U':
             self.__move_up(move_count, tail_move_visits, state)
         elif direction == 'R':
