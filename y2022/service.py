@@ -710,26 +710,43 @@ class Day8Resolver(Resolver):
 
 class Day9MoveState:
 
-    def __init__(self):
+    def __init__(self, knot_count=1) -> None:
         self.head = [0, 0]
-        self.tail = [0, 0]
+        self.knots = [[0, 0] for _ in range(knot_count)]
+        self.unique_tail_visits = {(0, 0)}
+
+    def __str__(self) -> str:
+        new_line = '\n'
+        inner_indent = '\t\t'
+        return f"""Current state is:
+\tHead at: ({self.head[0]}, {self.head[1]})
+\tKnots at:
+{f"{new_line}".join(f"{inner_indent}[{index}]: ({knot[0]}, {knot[1]})" for index, knot in enumerate(self.knots, 1))}
+\tUnique visits: {self.unique_tail_visits}
+--------------------------------"""
 
 
 class Day9Resolver(Resolver):
     def resolve(self, problem_input: UploadedFile) -> List[Solution]:
         return [
             Solution(part=Part.ONE.value, result=self.__solve_part_one(problem_input)),
+            Solution(part=Part.TWO.value, result=self.__solve_part_two(problem_input)),
         ]
 
     def __solve_part_one(self, problem_input: UploadedFile) -> int:
         state = Day9MoveState()
-        tail_unique_visits = set()
-        tail_unique_visits.add((state.tail[0], state.tail[1]))
+        return self.__solve(problem_input, state)
+
+    def __solve_part_two(self, problem_input: UploadedFile) -> int:
+        state = Day9MoveState(9)
+        return self.__solve(problem_input, state)
+
+    def __solve(self, problem_input: UploadedFile, state: Day9MoveState) -> int:
         for raw_input in problem_input:
             decoded_line = raw_input.decode().strip()
             direction, moves = self.__parse_operation(decoded_line)
-            tail_unique_visits.update(self.__perform_moves(direction, int(moves), state))
-        return len(tail_unique_visits)
+            self.__perform_move(direction, int(moves), state)
+        return len(state.unique_tail_visits)
 
     def __parse_operation(self, raw_op: str) -> ():
         matcher = re.match(r'(\w+)\s+(\d+)', raw_op)
@@ -738,54 +755,65 @@ class Day9Resolver(Resolver):
         else:
             raise RuntimeError('Invalid operation format!')
 
-    def __perform_moves(self, direction: str, move_count: int, state: Day9MoveState):
-        tail_move_visits = []
+    def __perform_move(self, direction: str, move_count: int, state: Day9MoveState) -> None:
         # TODO: abstract to move (find positive/negative direction, assign increment/decrement to x/y)
         if direction == 'U':
-            self.__move_up(move_count, tail_move_visits, state)
+            self.__move_up(move_count, state)
         elif direction == 'R':
-            self.__move_right(move_count, tail_move_visits, state)
+            self.__move_right(move_count, state)
         elif direction == 'D':
-            self.__move_down(move_count, tail_move_visits, state)
+            self.__move_down(move_count, state)
         else:
-            self.__move_left(move_count, tail_move_visits, state)
-        return tail_move_visits
+            self.__move_left(move_count, state)
 
-    def __move_up(self, move_count: int, tail_move_visits: [], state: Day9MoveState) -> None:
+    def __move_up(self, move_count: int, state: Day9MoveState) -> None:
         head = state.head
         for i in range(0, move_count):
-            previous_head_position = head[:]
             head[1] = head[1] - 1
-            self.__make_tail_move(state, previous_head_position, tail_move_visits)
+            self.__make_tail_move(state, head)
 
-    def __move_right(self, move_count: int, tail_move_visits: [], state: Day9MoveState) -> None:
+    def __move_right(self, move_count: int, state: Day9MoveState) -> None:
         head = state.head
         for i in range(0, move_count):
-            previous_head_position = head[:]
             head[0] = head[0] + 1
-            self.__make_tail_move(state, previous_head_position, tail_move_visits)
+            self.__make_tail_move(state, head)
 
-    def __move_down(self, move_count: int, tail_move_visits: [], state: Day9MoveState) -> None:
+    def __move_down(self, move_count: int, state: Day9MoveState) -> None:
         head = state.head
         for i in range(0, move_count):
-            previous_head_position = head[:]
             head[1] = head[1] + 1
-            self.__make_tail_move(state, previous_head_position, tail_move_visits)
+            self.__make_tail_move(state, head)
 
-    def __move_left(self, move_count: int, tail_move_visits: [], state: Day9MoveState) -> None:
+    def __move_left(self, move_count: int, state: Day9MoveState) -> None:
         head = state.head
         for i in range(0, move_count):
-            previous_head_position = head[:]
             head[0] = head[0] - 1
-            self.__make_tail_move(state, previous_head_position, tail_move_visits)
+            self.__make_tail_move(state, head)
 
-    def __is_tail_move_required(self, state: Day9MoveState) -> bool:
-        head = state.head
-        tail = state.tail
+    def __is_tail_knot_move_required(self, knot_a: [], knot_b: []) -> bool:
+        return abs(knot_a[0] - knot_b[0]) > 1 or abs(knot_a[1] - knot_b[1]) > 1
 
-        return abs(head[0] - tail[0]) > 1 or abs(head[1] - tail[1]) > 1
+    def __make_tail_move(self, state: Day9MoveState, previous_head_position: []) -> None:
+        previous_knot_position = previous_head_position
+        for idx, knot in enumerate(state.knots, 1):
+            if self.__is_tail_knot_move_required(previous_knot_position, knot):
+                knot[0], knot[1] = self.__tail_knot_move(previous_knot_position, knot)
 
-    def __make_tail_move(self, state: Day9MoveState, previous_head_position: [], tail_move_visits: []) -> None:
-        if self.__is_tail_move_required(state):
-            state.tail = previous_head_position
-            tail_move_visits.append(tuple(state.tail))
+            if idx == len(state.knots):
+                # noinspection PyTypeChecker
+                state.unique_tail_visits.add(tuple(knot))
+
+            previous_knot_position = knot[:]
+
+    def __tail_knot_move(self, head: [], tail: []) -> [int, int]:
+        result = [
+            tail[0] + 1 if head[0] > tail[0] else tail[0] - 1,
+            tail[1] + 1 if head[1] > tail[1] else tail[1] - 1
+        ]
+
+        if head[1] == tail[1]:
+            result[1] = tail[1]
+        elif head[0] == tail[0]:
+            result[0] = tail[0]
+
+        return result
