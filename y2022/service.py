@@ -830,12 +830,18 @@ class Day10Resolver(Resolver):
     def resolve(self, problem_input: UploadedFile) -> List[Solution]:
         return [
             Solution(part=Part.ONE.value, result=self.__solve_part_one(problem_input)),
+            Solution(part=Part.TWO.value, result=self.__solve_part_two(problem_input)),
         ]
 
     def __solve_part_one(self, problem_input: UploadedFile) -> int:
         state = Day10ResolverState()
         self.__cycle_through(problem_input, state)
         return self.__sum_certain_signals(state, [20, 60, 100, 140, 180, 220])
+
+    def __solve_part_two(self, problem_input: UploadedFile) -> str:
+        state = Day10ResolverState()
+        self.__cycle_through(problem_input, state)
+        return self.__draw(state)
 
     def __cycle_through(self, problem_input: UploadedFile, state: Day10ResolverState) -> None:
         for raw_input in problem_input:
@@ -879,3 +885,19 @@ class Day10Resolver(Resolver):
         if state.post_increase:
             state.x += state.post_increase
             state.post_increase = 0
+
+    def __draw(self, state: Day10ResolverState) -> str:
+        crt_result = []
+        row = []
+
+        for idx, cycle in enumerate(state.cycles):
+            mid = idx % 40
+
+            if not mid:
+                row = []
+                crt_result.append(row)
+
+            row.append('#') if mid - 1 <= cycle <= mid + 1 else row.append('.')
+
+        new_line = '\n'
+        return f"""{f"{new_line}".join(f"{''.join(row)}" for row in crt_result)}"""
