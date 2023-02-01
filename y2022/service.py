@@ -817,3 +817,65 @@ class Day9Resolver(Resolver):
             result[0] = tail[0]
 
         return result
+
+
+class Day10ResolverState:
+    def __init__(self) -> None:
+        self.x = 1
+        self.cycles = []
+        self.post_increase = 0
+
+
+class Day10Resolver(Resolver):
+    def resolve(self, problem_input: UploadedFile) -> List[Solution]:
+        return [
+            Solution(part=Part.ONE.value, result=self.__solve_part_one(problem_input)),
+        ]
+
+    def __solve_part_one(self, problem_input: UploadedFile) -> int:
+        state = Day10ResolverState()
+        self.__cycle_through(problem_input, state)
+        return self.__sum_certain_signals(state, [20, 60, 100, 140, 180, 220])
+
+    def __cycle_through(self, problem_input: UploadedFile, state: Day10ResolverState) -> None:
+        for raw_input in problem_input:
+            decoded_line = raw_input.decode().strip()
+            operation, potential_increase = self.__parse_operation(decoded_line)
+
+            match operation:
+                case 'noop':
+                    self.__perform_noop(state)
+                case 'addx':
+                    increase = int(potential_increase)
+                    self.__perform_addx(state, increase)
+
+    def __parse_operation(self, raw_op: str) -> ():
+        matcher = re.match(r'^(noop|addx)\s?(-?\d*)$', raw_op)
+        if matcher:
+            return matcher.groups()
+        else:
+            raise RuntimeError('Invalid operation format!')
+
+    def __perform_noop(self, state: Day10ResolverState) -> None:
+        self.__apply_post_increase(state)
+
+        state.cycles.append(state.x)  # cycle 1
+
+    def __perform_addx(self, state: Day10ResolverState, increase: int) -> None:
+        self.__apply_post_increase(state)
+
+        state.cycles.append(state.x)  # cycle 1
+        state.cycles.append(state.x)  # cycle 2
+        state.post_increase = increase
+
+    def __sum_certain_signals(self, state: Day10ResolverState, selected_cycles: []) -> int:
+        certain_signals_sum = 0
+        for selected_cycle in selected_cycles:
+            if len(state.cycles) >= selected_cycle:
+                certain_signals_sum += state.cycles[selected_cycle - 1] * selected_cycle
+        return certain_signals_sum
+
+    def __apply_post_increase(self, state: Day10ResolverState) -> None:
+        if state.post_increase:
+            state.x += state.post_increase
+            state.post_increase = 0
