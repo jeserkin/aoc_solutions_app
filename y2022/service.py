@@ -1,3 +1,4 @@
+import math
 import re
 import string
 from abc import abstractmethod
@@ -901,3 +902,138 @@ class Day10Resolver(Resolver):
 
         new_line = '\n'
         return f"""{f"{new_line}".join(f"{''.join(row)}" for row in crt_result)}"""
+
+
+class Day11Monkey:
+
+    def __init__(self, data: []) -> None:
+        self.starting_items = []
+        self.operation = ''
+        self.transfer_conditions = {
+            'rule': 0,
+            'true': 0,
+            'false': 0
+        }
+
+        self.activity = 0
+
+        self.__set_starting_items(data)
+        self.__set_operation(data)
+        self.__set_transfer_check(data)
+
+    def __str__(self) -> str:
+        return f"""Monkey state is:
+\t Starting items are: {', '.join([str(item) for item in self.starting_items])}
+\t Performed operation is: '{self.operation}'
+\t Transfer conditions: {self.transfer_conditions}
+\t Monkey activity: {self.activity}
+---------------------------------------------------"""
+
+    def __set_starting_items(self, data: []) -> None:
+        for info in data:
+            matcher = re.match(r'^Starting items: ', info)
+            if not matcher:
+                continue
+
+            items = re.findall(r'(\d+)', info)
+
+            if items:
+                self.starting_items = [int(item) for item in items]
+                return
+
+    def __set_operation(self, data: []) -> None:
+        for info in data:
+            matcher = re.search(r'^Operation: ', info)
+            if not matcher:
+                continue
+
+            matcher = re.findall(r': ([\w\+\*\=\s]+)$', info)
+
+            if matcher:
+                self.operation = matcher[0]
+
+    def __set_transfer_check(self, data: []) -> None:
+        for info in data:
+            transfer_matcher = re.match(r'Test: divisible by (\d+)', info)
+            positive_outcome_matcher = re.match(r'If true: throw to monkey (\d+)', info)
+            negative_outcome_matcher = re.match(r'If false: throw to monkey (\d+)', info)
+            if not transfer_matcher and not positive_outcome_matcher and not negative_outcome_matcher:
+                continue
+
+            if transfer_matcher:
+                self.transfer_conditions['rule'] = int(transfer_matcher.group(1))
+            elif positive_outcome_matcher:
+                self.transfer_conditions['true'] = int(positive_outcome_matcher.group(1))
+            elif negative_outcome_matcher:
+                self.transfer_conditions['false'] = int(negative_outcome_matcher.group(1))
+
+
+class Day11Resolver(Resolver):
+    def resolve(self, problem_input: UploadedFile) -> List[Solution]:
+        return [
+            Solution(part=Part.ONE.value, result=self.__solve_part_one(problem_input)),
+        ]
+
+    def __solve_part_one(self, problem_input: UploadedFile) -> int:
+        monkeys = self.__get_monkeys(problem_input)
+        self.__run_simulations(monkeys, 20)
+        return self.__get_level_of_monkey_business(monkeys)
+
+    def __get_monkeys(self, problem_input: UploadedFile) -> []:
+        monkeys = []
+        for monkey in self.__get_monkey(problem_input):
+            monkeys.append(monkey)
+        return monkeys
+
+    def __get_monkey(self, problem_input: UploadedFile) -> Generator:
+        monkey = []
+        for raw_input in problem_input:
+            decoded_line = raw_input.decode().strip()
+
+            # Skip monkey block start
+            monkey_start_matcher = re.match(r'^Monkey (\d+):$', decoded_line)
+            if monkey_start_matcher:
+                continue
+
+            if len(decoded_line) != 0:
+                monkey.append(decoded_line)
+
+            info_rows_per_monkey = 5
+            if len(monkey) == info_rows_per_monkey:
+                yield Day11Monkey(monkey)
+                monkey = []
+
+    def __run_simulations(self, monkeys: [], rounds=1) -> None:
+        for _ in range(rounds):
+            self.__run_simulation(monkeys)
+
+    def __run_simulation(self, monkeys: []) -> None:
+        for monkey in monkeys:
+            self.__play_keep_away(monkey, monkeys)
+
+    # https://en.wikipedia.org/wiki/Keep_away
+    def __play_keep_away(self, monkey: Day11Monkey, monkeys: []) -> None:
+        monkey.activity += len(monkey.starting_items)
+        for item in monkey.starting_items:
+            old = item
+            _locals = locals()
+
+            exec(monkey.operation, globals(), _locals)
+            item_new_worry_level = _locals['new']
+
+            relief_downgrade = 3
+            item_new_worry_level = math.floor(item_new_worry_level / relief_downgrade)
+
+            if item_new_worry_level % monkey.transfer_conditions['rule']:
+                receiving_monkey = monkeys[monkey.transfer_conditions['false']]
+            else:
+                receiving_monkey = monkeys[monkey.transfer_conditions['true']]
+
+            receiving_monkey.starting_items.append(item_new_worry_level)
+
+        monkey.starting_items = []
+
+    def __get_level_of_monkey_business(self, monkeys: []) -> int:
+        ranked_monkeys = sorted(monkeys, key=lambda x: x.activity, reverse=True)
+        monkey_a, monkey_b = ranked_monkeys[0:2]  # two most active monkeys
+        return monkey_a.activity * monkey_b.activity
