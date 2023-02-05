@@ -915,6 +915,7 @@ class Day11Monkey:
             'false': 0
         }
 
+        self.new_worry_calculation = lambda x: math.floor(x // 3)
         self.activity = 0
 
         self.__set_starting_items(data)
@@ -972,11 +973,18 @@ class Day11Resolver(Resolver):
     def resolve(self, problem_input: UploadedFile) -> List[Solution]:
         return [
             Solution(part=Part.ONE.value, result=self.__solve_part_one(problem_input)),
+            Solution(part=Part.TWO.value, result=self.__solve_part_two(problem_input)),
         ]
 
     def __solve_part_one(self, problem_input: UploadedFile) -> int:
         monkeys = self.__get_monkeys(problem_input)
         self.__run_simulations(monkeys, 20)
+        return self.__get_level_of_monkey_business(monkeys)
+
+    def __solve_part_two(self, problem_input: UploadedFile) -> int:
+        monkeys = self.__get_monkeys(problem_input)
+        monkeys = self.__set_new_worry_level_calculation(monkeys)
+        self.__run_simulations(monkeys, 10000)
         return self.__get_level_of_monkey_business(monkeys)
 
     def __get_monkeys(self, problem_input: UploadedFile) -> []:
@@ -1021,8 +1029,7 @@ class Day11Resolver(Resolver):
             exec(monkey.operation, globals(), _locals)
             item_new_worry_level = _locals['new']
 
-            relief_downgrade = 3
-            item_new_worry_level = math.floor(item_new_worry_level / relief_downgrade)
+            item_new_worry_level = monkey.new_worry_calculation(item_new_worry_level)
 
             if item_new_worry_level % monkey.transfer_conditions['rule']:
                 receiving_monkey = monkeys[monkey.transfer_conditions['false']]
@@ -1037,3 +1044,14 @@ class Day11Resolver(Resolver):
         ranked_monkeys = sorted(monkeys, key=lambda x: x.activity, reverse=True)
         monkey_a, monkey_b = ranked_monkeys[0:2]  # two most active monkeys
         return monkey_a.activity * monkey_b.activity
+
+    def __set_new_worry_level_calculation(self, monkeys: []) -> []:
+        # https://en.wikipedia.org/wiki/Chinese_remainder_theorem
+        mod_all = 1
+        for monkey in monkeys:
+            mod_all *= monkey.transfer_conditions['rule']
+
+        for monkey in monkeys:
+            monkey.new_worry_calculation = lambda x: x % mod_all
+
+        return monkeys
