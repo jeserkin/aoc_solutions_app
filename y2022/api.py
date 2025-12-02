@@ -4,7 +4,7 @@ from typing import List
 from ninja import Router, File
 from ninja.files import UploadedFile
 
-from y2022.models import Solution
+from common.models import Solution
 from y2022.service import Day1Resolver, Day2Resolver, Day3Resolver, Day4Resolver, Day5Resolver, Day6Resolver, \
     Day7Resolver, Day8Resolver, Day9Resolver, Day10Resolver, Day11Resolver
 

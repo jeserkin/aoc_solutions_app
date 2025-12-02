@@ -1,28 +1,22 @@
 import math
 import re
 import string
-from abc import abstractmethod
 from enum import Enum
 from functools import reduce
 from typing import List, Union, Generator
 
 from ninja import UploadedFile
 
-from y2022.models import Part, Solution
-
-
-class Resolver:
-    @abstractmethod
-    def resolve(self, problem_input: UploadedFile) -> List[Solution]:
-        pass
+from common.models import Part, Solution, Resolver
 
 
 class Day1Resolver(Resolver):
     def resolve(self, problem_input: UploadedFile) -> List[Solution]:
-        return [
+        response = [
             Solution(part=Part.ONE.value, result=self.__solve_part_one(problem_input)),
             Solution(part=Part.TWO.value, result=self.__solve_part_two(problem_input))
         ]
+        return response
 
     def __solve_part_one(self, problem_input: UploadedFile) -> int:
         elfs = self.__get_each_elf_calories(problem_input)
